@@ -797,6 +797,44 @@ makeChart('agChart','bar',[],[{label:'EA indicator',data:[]}]);
 makeChart('rainChart','bar',[],[{label:'Rainfall (mm)',data:[]}]);
 makeChart('tempChart','line',[],[{label:'Temperature (°C)',data:[]}]);
 setStatus('system ready');
+
+/* Automatic repository data connection */
+const REPO_RAW = 'https://raw.githubusercontent.com/silkysingz94-oss/Gambia-Watershed---Agricultural-Intelligence./main/';
+const EA_GEOJSON_URL = REPO_RAW + 'Census_EAs_Geo.json';
+const CENSUS_CSV_URL = REPO_RAW + 'Census_2013_2023.csv';
+
+async function loadRepositoryData(){
+  $('geoUrl').value = EA_GEOJSON_URL;
+  $('mapStatus').textContent = 'Connecting to repository EA boundaries...';
+  try{
+    const boundaryResponse = await fetch(EA_GEOJSON_URL,{cache:'no-store'});
+    if(!boundaryResponse.ok) throw new Error('EA GeoJSON HTTP '+boundaryResponse.status);
+    const boundaryData = await boundaryResponse.json();
+    await loadGeoJSON(boundaryData);
+    $('mapStatus').textContent = 'EA boundaries loaded from GitHub. Connecting census table...';
+  }catch(error){
+    $('mapStatus').textContent = 'Automatic EA boundary loading failed. Use the GeoJSON upload or URL control.';
+    console.error('Repository EA boundary load:',error);
+    setStatus('EA data source unavailable');
+    return;
+  }
+  try{
+    const censusResponse = await fetch(CENSUS_CSV_URL,{cache:'no-store'});
+    if(!censusResponse.ok) throw new Error('Census CSV HTTP '+censusResponse.status);
+    const censusText = await censusResponse.text();
+    const censusRows = parseCSV(censusText);
+    if(!censusRows.length) throw new Error('Census CSV contains no readable records.');
+    mergeStats(censusRows);
+    $('mapStatus').textContent = 'EA boundaries and census table loaded from GitHub.';
+    setStatus('repository data connected');
+  }catch(error){
+    $('mapStatus').textContent = 'EA boundaries loaded; census CSV could not be joined. Check its public raw URL and EA code field.';
+    console.error('Repository census CSV load:',error);
+    setStatus('boundaries loaded / census unavailable');
+  }
+}
+loadRepositoryData();
+
 </script>
 </body>
 </html>
