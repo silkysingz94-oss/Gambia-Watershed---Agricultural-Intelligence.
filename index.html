@@ -1,0 +1,802 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GBoS GEOAI | Gambia Watershed & Agricultural Intelligence</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@7.2.0/turf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+<style>
+:root{
+ --bg:#081321;--panel:#101f31;--panel2:#14263a;--line:#263b51;
+ --text:#e8f0f7;--muted:#91a5b8;--green:#39c58a;--blue:#45a8ef;
+ --orange:#f4a340;--red:#ee6868;--purple:#a58af5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+ font-family:Inter,Segoe UI,Arial,sans-serif;font-size:13px}
+header{height:68px;padding:12px 20px;background:#0c1a2a;
+ border-bottom:1px solid var(--line);display:flex;align-items:center;
+ justify-content:space-between;gap:15px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:38px;height:38px;border-radius:9px;background:#174d48;
+ display:grid;place-items:center;color:#6ee2b0;font-weight:900;font-size:17px}
+h1{font-size:16px;margin:0 0 4px;letter-spacing:.5px}
+.subtitle{color:var(--muted);font-size:10px;letter-spacing:1.2px}
+.header-right{display:flex;align-items:center;gap:10px}
+.status{font-size:10px;color:var(--green);border:1px solid #245c4b;
+ padding:6px 9px;border-radius:20px}
+#clock{font-size:11px;color:var(--muted)}
+main{height:calc(100vh - 68px);display:grid;
+ grid-template-columns:minmax(255px,1fr) minmax(400px,1fr) minmax(255px,1fr);
+ gap:9px;padding:9px;min-height:0}
+.panel{background:var(--panel);border:1px solid var(--line);
+ border-radius:9px;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.panel-head{padding:12px 13px;border-bottom:1px solid var(--line);
+ font-size:11px;font-weight:800;letter-spacing:1px;display:flex;
+ justify-content:space-between;align-items:center}
+.panel-scroll{overflow-y:auto;min-height:0;padding:12px}
+.panel-scroll::-webkit-scrollbar{width:5px}
+.panel-scroll::-webkit-scrollbar-thumb{background:#31465c;border-radius:5px}
+.section{margin-bottom:15px}
+.section-title{font-size:10px;color:#8fa9c1;font-weight:800;
+ letter-spacing:1px;margin-bottom:9px;text-transform:uppercase}
+label{display:block;font-size:11px;color:#a9bbcb;margin:9px 0 5px}
+select,input,button{width:100%;border-radius:5px;border:1px solid #31475d;
+ background:#0b1928;color:var(--text);padding:9px;font-size:11px;outline:none}
+input[type=file]{font-size:10px;padding:7px}
+input[type=checkbox]{width:auto;accent-color:var(--green)}
+button{cursor:pointer;font-weight:700}
+button.primary{background:#17694f;border-color:#258a68}
+button.secondary{background:#20374d}
+button:hover{filter:brightness(1.2)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.hint{font-size:10px;line-height:1.5;color:var(--muted);margin-top:6px}
+.note{padding:9px;background:#172b3e;border-left:3px solid var(--orange);
+ border-radius:4px;font-size:10px;line-height:1.5;color:#bdcbd8}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.kpi{background:var(--panel2);border:1px solid #263e55;border-radius:7px;padding:10px}
+.kpi .v{font-size:19px;font-weight:800;margin:5px 0}
+.kpi .k{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
+.kpi .u{font-size:9px;color:#8da4b8}
+#map{flex:1;min-height:0;background:#101b27}
+.map-panel{position:relative}
+.map-toolbar{padding:8px;display:flex;gap:6px;border-bottom:1px solid var(--line)}
+.map-toolbar select{padding:7px}
+.map-legend{position:absolute;bottom:20px;left:12px;z-index:500;
+ background:#0b1928ed;padding:10px;border:1px solid #41566b;
+ border-radius:6px;font-size:10px;line-height:1.7;max-width:180px}
+.legend-gradient{height:8px;width:145px;margin:6px 0;
+ background:linear-gradient(90deg,#f2e9a5,#a5d66c,#39a96b,#176c79)}
+#mapStatus{position:absolute;top:58px;left:12px;z-index:500;
+ background:#0b1928e8;padding:7px 9px;border-radius:5px;
+ color:#b7c9d8;font-size:10px;max-width:75%}
+.chartbox{background:#0c1a29;border:1px solid #263b51;
+ border-radius:7px;padding:10px;margin:8px 0}
+.chartbox h3{font-size:10px;color:#a9bbcb;margin:0 0 10px}
+.chartbox canvas{width:100%!important;max-height:190px}
+.metric-list{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.metric{background:#14283a;padding:8px;border-radius:5px}
+.metric small{display:block;color:var(--muted);font-size:9px}
+.metric strong{font-size:13px;display:block;margin-top:4px}
+.pill{font-size:9px;padding:4px 6px;border-radius:4px;background:#203c4d;color:#8ee1bb}
+footer{padding:10px 13px;border-top:1px solid var(--line);
+ color:#7e95a9;font-size:9px;line-height:1.6}
+#selectedTitle{font-size:14px;font-weight:800;margin-bottom:5px}
+#selectedDetails{font-size:10px;color:var(--muted);line-height:1.6}
+.loading{opacity:.7}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#102238;color:#e8f0f7}
+.leaflet-popup-content{font-size:11px;line-height:1.5}
+.leaflet-control-layers{background:#102238;color:white;border:1px solid #42566a}
+@media(max-width:950px){
+ main{height:auto;min-height:calc(100vh - 68px);grid-template-columns:1fr}
+ .panel{min-height:450px}
+ .map-panel{height:600px}
+}
+</style>
+</head>
+
+<body>
+<header>
+ <div class="brand">
+  <div class="logo">G</div>
+  <div>
+   <h1>GBoS GEOAI | GAMBIA WATERSHED & AGRICULTURAL INTELLIGENCE</h1>
+   <div class="subtitle">ENUMERATION AREA MONITORING • AGRICULTURE • CLIMATE • WATER RESOURCES</div>
+  </div>
+ </div>
+ <div class="header-right">
+  <span class="status" id="systemStatus">● SYSTEM READY</span>
+  <span id="clock"></span>
+ </div>
+</header>
+
+<main>
+<!-- LEFT: CONTROLS -->
+<section class="panel">
+ <div class="panel-head"><span>01 / CONTROLS & DATA</span><span class="pill">EA LEVEL</span></div>
+ <div class="panel-scroll">
+
+  <div class="section">
+   <div class="section-title">Enumeration Area Boundaries</div>
+   <label>Public GeoJSON URL</label>
+   <input id="geoUrl" placeholder="Paste public raw GeoJSON URL">
+   <div class="row" style="margin-top:7px">
+    <button class="primary" id="loadUrl">Load GeoJSON URL</button>
+    <button class="secondary" id="fitAll">Zoom to EAs</button>
+   </div>
+   <label>Or upload EA GeoJSON</label>
+   <input id="geoFile" type="file" accept=".json,.geojson,application/geo+json">
+   <div class="hint">The application needs polygon boundaries. A private Earth Engine asset cannot be loaded directly by a standalone HTML page. Export it to GeoJSON or provide a publicly accessible URL.</div>
+  </div>
+
+  <div class="section">
+   <div class="section-title">EA Statistical Data</div>
+   <label>Upload EA agricultural / census statistics CSV</label>
+   <input id="statsFile" type="file" accept=".csv">
+   <div class="hint">Recommended fields: feacode, cropland_ha, ndvi, evi, savi, rainfall_mm, soil_moisture, temperature, yield, rice_ha, groundnut_ha, millet_ha, maize_ha. The app matches records by EA code.</div>
+  </div>
+
+  <div class="section">
+   <div class="section-title">Administrative Filters</div>
+   <label>Region</label><select id="region"><option value="">All regions</option></select>
+   <label>LGA</label><select id="lga"><option value="">All LGAs</option></select>
+   <label>District</label><select id="district"><option value="">All districts</option></select>
+   <label>Ward</label><select id="ward"><option value="">All wards</option></select>
+   <label>Enumeration Area</label><select id="ea"><option value="">All EAs</option></select>
+  </div>
+
+  <div class="section">
+   <div class="section-title">Agricultural Map Variable</div>
+   <select id="mapMetric">
+    <option value="ea_area">EA area (km²)</option>
+    <option value="cropland_ha">Cropland area (ha)</option>
+    <option value="cropland_pct">Cropland share (%)</option>
+    <option value="ndvi">NDVI</option>
+    <option value="evi">EVI</option>
+    <option value="savi">SAVI</option>
+    <option value="rainfall_mm">Rainfall (mm)</option>
+    <option value="soil_moisture">Soil moisture</option>
+    <option value="temperature">Temperature (°C)</option>
+    <option value="yield">Crop yield</option>
+    <option value="population">Population</option>
+    <option value="households">Households</option>
+   </select>
+   <div class="hint" id="metricHint">EA area is calculated from the polygon geometry.</div>
+  </div>
+
+  <div class="section">
+   <div class="section-title">Weather & Agricultural Climate</div>
+   <label>Forecast horizon</label>
+   <select id="forecastDays">
+    <option value="3">3 days</option>
+    <option value="7" selected>7 days</option>
+    <option value="14">14 days</option>
+   </select>
+   <button class="primary" id="fetchWeather" style="margin-top:8px">Retrieve Selected EA Climate</button>
+   <div class="hint">Weather data is requested for the selected EA centroid. It is not a measured weather station observation or a 4,936-EA gridded dataset.</div>
+  </div>
+
+  <div class="section">
+   <div class="section-title">Contextual Map Layers</div>
+   <label><input type="checkbox" id="showWorldCover" checked> ESA WorldCover contextual layer</label>
+   <label><input type="checkbox" id="showSatellite"> NASA MODIS satellite imagery</label>
+   <label><input type="checkbox" id="showOsm"> OpenStreetMap waterway network</label>
+   <label><input type="checkbox" id="showEAs" checked> Enumeration Area boundaries</label>
+   <div class="hint">Contextual raster imagery is not equivalent to EA-level zonal statistics. Use a raster processing workflow to calculate NDVI, land cover and cropland area for each polygon.</div>
+  </div>
+
+  <div class="section">
+   <div class="section-title">Exports</div>
+   <div class="row">
+    <button class="secondary" id="exportCSV">Export EA CSV</button>
+    <button class="secondary" id="exportGeo">Export filtered GeoJSON</button>
+   </div>
+   <button class="secondary" id="exportJSON" style="margin-top:7px">Export dashboard JSON</button>
+  </div>
+
+  <div class="section">
+   <button class="primary" id="reset">Reset Dashboard</button>
+  </div>
+ </div>
+ <footer>GIS / CARTOGRAPHY UNIT<br>GBoS GEOAI • Research and educational use</footer>
+</section>
+
+<!-- CENTRE: MAP -->
+<section class="panel map-panel">
+ <div class="panel-head"><span>02 / INTERACTIVE EA MAP</span><span id="eaCount" class="pill">0 EAs</span></div>
+ <div class="map-toolbar">
+  <select id="basemap">
+   <option value="street">Street</option>
+   <option value="satellite">Satellite</option>
+   <option value="terrain">Terrain</option>
+  </select>
+  <select id="boundaryStyle">
+   <option value="choropleth">Thematic EA map</option>
+   <option value="outline">EA outlines</option>
+  </select>
+ </div>
+ <div id="map"></div>
+ <div id="mapStatus">Load your Enumeration Area GeoJSON to begin.</div>
+ <div class="map-legend">
+  <strong id="legendTitle">EA map legend</strong>
+  <div class="legend-gradient"></div>
+  <div style="display:flex;justify-content:space-between"><span>Lower</span><span>Higher</span></div>
+  <div class="hint">Colours represent the selected mapped variable where EA values are available.</div>
+ </div>
+</section>
+
+<!-- RIGHT: ANALYTICS -->
+<section class="panel">
+ <div class="panel-head"><span>03 / ANALYTICS & EA PROFILE</span><span class="pill">LIVE VIEW</span></div>
+ <div class="panel-scroll">
+  <div class="section">
+   <div class="section-title">National / Filtered Overview</div>
+   <div class="kpis">
+    <div class="kpi"><div class="k">Enumeration Areas</div><div class="v" id="kEA">0</div><div class="u">Visible polygons</div></div>
+    <div class="kpi"><div class="k">Total EA area</div><div class="v" id="kArea">—</div><div class="u">km²</div></div>
+    <div class="kpi"><div class="k">Cropland area</div><div class="v" id="kCrop">—</div><div class="u">ha • when supplied</div></div>
+    <div class="kpi"><div class="k">Population</div><div class="v" id="kPop">—</div><div class="u">When supplied</div></div>
+   </div>
+  </div>
+
+  <div class="section">
+   <div class="section-title">Selected Enumeration Area</div>
+   <div class="chartbox">
+    <div id="selectedTitle">No EA selected</div>
+    <div id="selectedDetails">Load EA boundaries and select a polygon on the map or use the EA selector.</div>
+   </div>
+   <div class="metric-list" id="eaMetrics">
+    <div class="metric"><small>Cropland</small><strong>—</strong></div>
+    <div class="metric"><small>NDVI</small><strong>—</strong></div>
+    <div class="metric"><small>Rainfall</small><strong>—</strong></div>
+    <div class="metric"><small>Soil moisture</small><strong>—</strong></div>
+   </div>
+  </div>
+
+  <div class="section">
+   <div class="section-title">EA Agricultural Variables</div>
+   <div class="chartbox"><h3>Available agricultural indicators</h3><canvas id="agChart"></canvas></div>
+   <div class="hint">Chart values are shown only when the corresponding EA statistics are present in the uploaded CSV or GeoJSON attributes.</div>
+  </div>
+
+  <div class="section">
+   <div class="section-title">Climate Forecast — Selected EA</div>
+   <div class="metric-list">
+    <div class="metric"><small>Mean temperature</small><strong id="weatherTemp">—</strong></div>
+    <div class="metric"><small>Total forecast rainfall</small><strong id="weatherRain">—</strong></div>
+    <div class="metric"><small>Mean relative humidity</small><strong id="weatherHumidity">—</strong></div>
+    <div class="metric"><small>Mean soil moisture</small><strong id="weatherSoil">—</strong></div>
+   </div>
+   <div class="chartbox"><h3>Daily forecast rainfall (mm)</h3><canvas id="rainChart"></canvas></div>
+   <div class="chartbox"><h3>Daily temperature (°C)</h3><canvas id="tempChart"></canvas></div>
+   <div class="hint" id="weatherSource">No climate forecast requested.</div>
+  </div>
+
+  <div class="section">
+   <div class="section-title">Agricultural Monitoring Interpretation</div>
+   <div class="note" id="interpretation">Load EA boundaries and statistics to generate an EA-specific summary. Missing values are not assumed or fabricated.</div>
+  </div>
+
+  <div class="section">
+   <div class="section-title">Data and Methodology</div>
+   <div class="hint">
+    <b>EA area:</b> calculated from polygon geometry using Turf.js.<br><br>
+    <b>Cropland:</b> taken from uploaded EA statistics. WorldCover is a contextual land-cover layer and is not automatically converted to polygon statistics here.<br><br>
+    <b>NDVI / EVI / SAVI:</b> require processed satellite raster values or an uploaded EA statistics table. Satellite imagery display alone does not calculate these indices.<br><br>
+    <b>Climate:</b> Open-Meteo forecast API at the selected EA centroid. Forecast is not a measured station record.<br><br>
+    <b>Terrain:</b> a DEM-based EA elevation and slope analysis must be calculated from a DEM raster. No terrain statistics are invented.<br><br>
+    <b>Yield and crop area:</b> require agricultural survey, crop-cut or validated remote-sensing statistics.
+   </div>
+  </div>
+ </div>
+ <footer>
+  Produced by Ansu Singhateh | GIS Analyst | GIS / Cartography Unit | Gambia Bureau of Statistics<br>
+  GBoS GEOAI • Research and educational use
+ </footer>
+</section>
+</main>
+
+<script>
+/* ==========================================================
+   GBoS GEOAI — GAMBIA WATERSHED & AGRICULTURAL INTELLIGENCE
+   EA-level browser dashboard.
+   No database credentials or private API keys are required.
+========================================================== */
+
+const $ = id => document.getElementById(id);
+const state = {
+ all:[], filtered:[], selected:null, stats:{}, weather:null,
+ eaLayer:null, worldLayer:null, satelliteLayer:null, osmLayer:null,
+ charts:{}
+};
+
+const map = L.map('map',{zoomControl:true}).setView([13.45,-15.4],7);
+
+const basemaps = {
+ street:L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:19,attribution:'© OpenStreetMap contributors'}),
+ satellite:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+  maxZoom:19,attribution:'Esri World Imagery'}),
+ terrain:L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{
+  maxZoom:17,attribution:'© OpenTopoMap'})
+};
+basemaps.street.addTo(map);
+
+state.worldLayer = L.tileLayer.wms(
+ 'https://services.terrascope.be/wms/v2',
+ {layers:'WORLDCOVER_2021_MAP',format:'image/png',transparent:true,opacity:.55,
+  attribution:'ESA WorldCover'},{}
+);
+
+state.satelliteLayer = L.tileLayer(
+ 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/2026-11-12/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg',
+ {maxZoom:9,opacity:.75,attribution:'NASA GIBS / MODIS'}
+);
+
+function setStatus(s){$('systemStatus').textContent='● '+s.toUpperCase()}
+function num(v,d=1){
+ if(v===null||v===undefined||v===''||!Number.isFinite(Number(v)))return '—';
+ return Number(v).toLocaleString(undefined,{maximumFractionDigits:d});
+}
+function prop(p,keys){
+ for(const k of keys){
+  if(p[k]!==undefined&&p[k]!==null&&p[k]!=='')return p[k];
+ }
+ return '';
+}
+function getEAcode(p){
+ return String(prop(p,['feacode','FEACODE','ea_code','EA_CODE','eaname','EA_NAME','code','CODE','OBJECTID'])).trim();
+}
+function norm(s){return String(s??'').trim().toLowerCase()}
+function escapeHTML(s){
+ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function getMetric(f,key){
+ const p=f.properties||{};
+ const aliases={
+  ea_area:[],
+  cropland_ha:['cropland_ha','CROPLAND_HA','crop_ha','cultivated_ha','agricultural_area_ha'],
+  cropland_pct:['cropland_pct','CROPLAND_PCT','crop_percent','cropland_percentage'],
+  ndvi:['ndvi','NDVI','mean_ndvi','NDVI_mean'],
+  evi:['evi','EVI','mean_evi'],
+  savi:['savi','SAVI','mean_savi'],
+  rainfall_mm:['rainfall_mm','RAIN_MM','precipitation_mm','rainfall'],
+  soil_moisture:['soil_moisture','SOIL_MOISTURE','soil_moisture_mean'],
+  temperature:['temperature','TEMP','temperature_c','t2m'],
+  yield:['yield','crop_yield','yield_t_ha','yield_kg_ha'],
+  population:['sum_pop','POP','pop','population','POPULATION'],
+  households:['sum_hhs','HH','hhs','households','HOUSEHOLDS']
+ };
+ if(key==='ea_area')return f.__areaKm2;
+ const v=prop(p,aliases[key]||[key]);
+ if(v===''||!Number.isFinite(Number(v)))return null;
+ return Number(v);
+}
+function calcArea(f){
+ try{return turf.area(f)/1e6}catch(e){return null}
+}
+function centre(f){
+ try{
+  const c=turf.centroid(f).geometry.coordinates;
+  return {lon:c[0],lat:c[1]};
+ }catch(e){return null}
+}
+function featureName(f){
+ const p=f.properties||{};
+ return prop(p,['eaname','EA_NAME','ea_name','feacode','FEACODE','name','NAME','OBJECTID'])||'Unnamed EA';
+}
+function featureStyle(f){
+ const key=$('mapMetric').value;
+ const v=getMetric(f,key);
+ const outline=$('boundaryStyle').value==='outline';
+ if(outline)return {color:'#65b4ee',weight:1,fillOpacity:.025};
+ if(v===null)return {color:'#7890a5',weight:.6,fillColor:'#45576b',fillOpacity:.28};
+ const vals=state.filtered.map(x=>getMetric(x,key)).filter(x=>x!==null);
+ if(!vals.length)return {color:'#7890a5',weight:.6,fillOpacity:.25};
+ const min=Math.min(...vals),max=Math.max(...vals);
+ const t=max===min?.5:(v-min)/(max-min);
+ const colors=['#f2e9a5','#c6df7a','#83c66e','#3da77a','#176c79'];
+ return {color:'#263c4e',weight:.55,fillColor:colors[Math.min(4,Math.floor(t*5))],fillOpacity:.78};
+}
+function popupHTML(f){
+ const p=f.properties||{};
+ const code=getEAcode(p)||'Not supplied';
+ return `<b>${escapeHTML(featureName(f))}</b><br>
+ EA code: ${escapeHTML(code)}<br>
+ Region: ${escapeHTML(prop(p,['RCO','region','REGION']))||'—'}<br>
+ LGA: ${escapeHTML(prop(p,['lganame','LGA','lga']))||'—'}<br>
+ District: ${escapeHTML(prop(p,['distname','district']))||'—'}<br>
+ Ward: ${escapeHTML(prop(p,['wardname','ward']))||'—'}<br>
+ Area: ${num(f.__areaKm2,2)} km²<br>
+ <b>Click polygon to view full EA profile</b>`;
+}
+function renderMap(){
+ if(state.eaLayer)map.removeLayer(state.eaLayer);
+ state.eaLayer=L.geoJSON({type:'FeatureCollection',features:state.filtered},{
+  style:featureStyle,
+  onEachFeature:(f,l)=>{
+   l.bindPopup(popupHTML(f));
+   l.on('click',()=>selectEA(f));
+  }
+ }).addTo(map);
+ $('eaCount').textContent=state.filtered.length.toLocaleString()+' EAs';
+ $('mapStatus').textContent=state.all.length?
+  `${state.filtered.length.toLocaleString()} of ${state.all.length.toLocaleString()} EAs displayed`:
+  'Load your Enumeration Area GeoJSON to begin.';
+ updateLegend();
+}
+function updateLegend(){
+ const labels={
+  ea_area:'EA area (km²)',cropland_ha:'Cropland area (ha)',
+  cropland_pct:'Cropland share (%)',ndvi:'NDVI',evi:'EVI',savi:'SAVI',
+  rainfall_mm:'Rainfall (mm)',soil_moisture:'Soil moisture',
+  temperature:'Temperature (°C)',yield:'Crop yield',
+  population:'Population',households:'Households'
+ };
+ $('legendTitle').textContent=labels[$('mapMetric').value]||'EA variable';
+}
+function fillSelect(id,values,first){
+ const el=$(id),old=el.value;
+ el.innerHTML='';
+ const opt=document.createElement('option');opt.value='';opt.textContent=first;
+ el.appendChild(opt);
+ [...new Set(values.filter(v=>v!==''&&v!==null&&v!==undefined).map(String))].sort()
+  .forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o)});
+ if([...el.options].some(o=>o.value===old))el.value=old;
+}
+function refreshFilters(){
+ const p=state.all.map(f=>f.properties||{});
+ const r=$('region').value,l=$('lga').value,d=$('district').value,w=$('ward').value;
+ fillSelect('region',p.map(x=>prop(x,['RCO','region','REGION'])),'All regions');
+ const subset=p.filter(x=>!r||norm(prop(x,['RCO','region','REGION']))===norm(r));
+ fillSelect('lga',subset.map(x=>prop(x,['lganame','LGA','lga'])),'All LGAs');
+ const s2=subset.filter(x=>!l||norm(prop(x,['lganame','LGA','lga']))===norm(l));
+ fillSelect('district',s2.map(x=>prop(x,['distname','district','DISTRICT'])),'All districts');
+ const s3=s2.filter(x=>!d||norm(prop(x,['distname','district','DISTRICT']))===norm(d));
+ fillSelect('ward',s3.map(x=>prop(x,['wardname','ward','WARD'])),'All wards');
+ const s4=s3.filter(x=>!w||norm(prop(x,['wardname','ward','WARD']))===norm(w));
+ fillSelect('ea',s4.map(x=>getEAcode(x)),'All EAs');
+}
+function applyFilters(){
+ const r=$('region').value,l=$('lga').value,d=$('district').value,w=$('ward').value,e=$('ea').value;
+ state.filtered=state.all.filter(f=>{
+  const p=f.properties||{};
+  return (!r||norm(prop(p,['RCO','region','REGION']))===norm(r))&&
+   (!l||norm(prop(p,['lganame','LGA','lga']))===norm(l))&&
+   (!d||norm(prop(p,['distname','district','DISTRICT']))===norm(d))&&
+   (!w||norm(prop(p,['wardname','ward','WARD']))===norm(w))&&
+   (!e||norm(getEAcode(p))===norm(e));
+ });
+ renderMap();updateOverview();
+}
+function updateOverview(){
+ const arr=state.filtered;
+ $('kEA').textContent=arr.length.toLocaleString();
+ const area=arr.reduce((s,f)=>s+(f.__areaKm2||0),0);
+ $('kArea').textContent=num(area,1);
+ const crops=arr.map(f=>getMetric(f,'cropland_ha')).filter(v=>v!==null);
+ const pops=arr.map(f=>getMetric(f,'population')).filter(v=>v!==null);
+ $('kCrop').textContent=crops.length?num(crops.reduce((a,b)=>a+b,0),0):'—';
+ $('kPop').textContent=pops.length?num(pops.reduce((a,b)=>a+b,0),0):'—';
+}
+function makeChart(id,type,labels,datasets,options={}){
+ if(state.charts[id])state.charts[id].destroy();
+ state.charts[id]=new Chart($(id),{
+  type,data:{labels,datasets},options:{responsive:true,maintainAspectRatio:true,
+   plugins:{legend:{labels:{color:'#b9c9d7',font:{size:9}}}},
+   scales:{x:{ticks:{color:'#91a5b8',font:{size:9}},grid:{color:'#26384a'}},
+    y:{ticks:{color:'#91a5b8',font:{size:9}},grid:{color:'#26384a'}}},
+   ...options}
+ });
+}
+function drawAgChart(f){
+ const vars=[
+  ['Cropland (ha)','cropland_ha'],['NDVI','ndvi'],['EVI','evi'],
+  ['SAVI','savi'],['Yield','yield']
+ ];
+ const labels=[],values=[];
+ vars.forEach(([label,key])=>{
+  const v=getMetric(f,key);
+  if(v!==null){labels.push(label);values.push(v)}
+ });
+ makeChart('agChart','bar',labels,[{label:'EA indicator',data:values,
+  backgroundColor:'#39a77c',borderRadius:3}]);
+}
+function selectEA(f){
+ state.selected=f;state.weather=null;
+ const p=f.properties||{};
+ $('selectedTitle').textContent=featureName(f);
+ $('selectedDetails').innerHTML=
+  `EA code: ${escapeHTML(getEAcode(p)||'—')}<br>`+
+  `Region: ${escapeHTML(prop(p,['RCO','region']))||'—'}<br>`+
+  `LGA: ${escapeHTML(prop(p,['lganame','LGA']))||'—'}<br>`+
+  `District: ${escapeHTML(prop(p,['distname','district']))||'—'}<br>`+
+  `Ward: ${escapeHTML(prop(p,['wardname','ward']))||'—'}<br>`+
+  `EA area: ${num(f.__areaKm2,2)} km²`;
+ const fields=[
+  ['Cropland (ha)','cropland_ha'],['Cropland (%)','cropland_pct'],
+  ['NDVI','ndvi'],['EVI','evi'],['SAVI','savi'],
+  ['Rainfall (mm)','rainfall_mm'],['Soil moisture','soil_moisture'],
+  ['Temperature (°C)','temperature'],['Population','population'],
+  ['Households','households'],['Yield','yield']
+ ];
+ $('eaMetrics').innerHTML=fields.map(([label,key])=>{
+  const v=getMetric(f,key);
+  return `<div class="metric"><small>${label}</small><strong>${v===null?'—':num(v,3)}</strong></div>`;
+ }).join('');
+ drawAgChart(f);
+ const c=centre(f);
+ $('interpretation').textContent=c?
+  `Selected EA centroid: ${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}. EA area is calculated from the polygon. Agricultural indicators are shown only where matching EA statistics are available. Retrieve a climate forecast to view forecast rainfall and temperature.`:
+  'Could not calculate an EA centroid.';
+ if(state.eaLayer)state.eaLayer.eachLayer(l=>{
+  if(l.feature===f){l.setStyle({color:'#ffffff',weight:3,fillOpacity:.9});}
+ });
+}
+function parseCSV(text){
+ const lines=text.replace(/\r/g,'').split('\n').filter(x=>x.trim());
+ if(!lines.length)return [];
+ function parseLine(line){
+  const out=[];let v='',q=false;
+  for(let i=0;i<line.length;i++){
+   const c=line[i];
+   if(c==='"'&&line[i+1]==='"'&&q){v+='"';i++}
+   else if(c==='"')q=!q;
+   else if(c===','&&!q){out.push(v);v=''}
+   else v+=c;
+  }
+  out.push(v);return out;
+ }
+ const headers=parseLine(lines[0]).map(norm);
+ return lines.slice(1).map(line=>{
+  const vals=parseLine(line),o={};
+  headers.forEach((h,i)=>o[h]=vals[i]??'');
+  return o;
+ });
+}
+function mergeStats(rows){
+ let count=0;
+ rows.forEach(row=>{
+  const code=String(prop(row,['feacode','FEACODE','ea_code','ea code','code'])).trim();
+  if(!code)return;
+  state.stats[norm(code)]=row;count++;
+ });
+ state.all.forEach(f=>{
+  const code=norm(getEAcode(f));
+  const extra=state.stats[code];
+  if(extra)Object.entries(extra).forEach(([k,v])=>{
+   if(v!==''&&v!==undefined)f.properties[k]=v;
+  });
+ });
+ renderMap();updateOverview();
+ if(state.selected)selectEA(state.selected);
+ setStatus('EA statistics loaded');
+ alert(`Loaded ${count.toLocaleString()} EA statistics records. Records are matched using EA code.`);
+}
+async function loadGeoJSON(obj){
+ if(obj.type==='Feature')obj={type:'FeatureCollection',features:[obj]};
+ if(!obj||!Array.isArray(obj.features))throw new Error('GeoJSON must contain a FeatureCollection with polygon features.');
+ const feats=obj.features.filter(f=>f.geometry&&
+  ['Polygon','MultiPolygon'].includes(f.geometry.type));
+ if(!feats.length)throw new Error('No Polygon or MultiPolygon features were found.');
+ state.all=feats;
+ state.all.forEach(f=>{f.__areaKm2=calcArea(f)});
+ state.filtered=[...state.all];
+ state.selected=null;
+ refreshFilters();applyFilters();
+ const bounds=state.eaLayer.getBounds();
+ if(bounds.isValid())map.fitBounds(bounds,{padding:[15,15]});
+ $('selectedTitle').textContent='Select an Enumeration Area';
+ $('selectedDetails').textContent=`${state.all.length.toLocaleString()} EA polygons loaded. Select a polygon to inspect its profile.`;
+ setStatus('EA boundaries loaded');
+}
+$('geoFile').addEventListener('change',async e=>{
+ const file=e.target.files[0];if(!file)return;
+ try{await loadGeoJSON(JSON.parse(await file.text()))}
+ catch(err){alert('GeoJSON error: '+err.message);setStatus('Boundary load error')}
+});
+$('loadUrl').onclick=async()=>{
+ const url=$('geoUrl').value.trim();if(!url)return alert('Enter a public GeoJSON URL.');
+ try{
+  setStatus('loading EA boundaries');
+  const res=await fetch(url);
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  await loadGeoJSON(await res.json());
+ }catch(e){alert('Could not load GeoJSON. Check the URL, CORS access and file format. '+e.message);setStatus('boundary unavailable')}
+};
+['region','lga','district','ward','ea'].forEach(id=>{
+ $(id).addEventListener('change',()=>{
+  if(id==='region'){$('lga').value='';$('district').value='';$('ward').value='';$('ea').value=''}
+  if(id==='lga'){$('district').value='';$('ward').value='';$('ea').value=''}
+  if(id==='district'){$('ward').value='';$('ea').value=''}
+  if(id==='ward')$('ea').value='';
+  refreshFilters();applyFilters();
+  if($('ea').value){
+   const f=state.filtered.find(x=>norm(getEAcode(x))===norm($('ea').value));
+   if(f){selectEA(f);const b=turf.bbox(f);map.fitBounds([[b[1],b[0]],[b[3],b[2]]])}
+  }
+ });
+});
+$('mapMetric').onchange=()=>{renderMap();updateOverview();$('metricHint').textContent=
+ $('mapMetric').value==='ea_area'?'EA area is calculated from polygon geometry.':
+ 'EA values are mapped only when the selected variable exists in the EA attributes or uploaded statistics CSV.'};
+$('basemap').onchange=()=>{
+ Object.values(basemaps).forEach(l=>map.removeLayer(l));
+ basemaps[$('basemap').value].addTo(map);
+};
+$('boundaryStyle').onchange=renderMap;
+$('fitAll').onclick=()=>{
+ if(state.eaLayer&&state.eaLayer.getBounds().isValid())map.fitBounds(state.eaLayer.getBounds());
+};
+$('showEAs').onchange=()=>{
+ if(!$('showEAs').checked&&state.eaLayer)map.removeLayer(state.eaLayer);
+ else if(state.eaLayer)state.eaLayer.addTo(map);
+};
+$('showWorldCover').onchange=e=>toggleLayer(state.worldLayer,e.target.checked);
+$('showSatellite').onchange=e=>toggleLayer(state.satelliteLayer,e.target.checked);
+function toggleLayer(layer,on){if(on)layer.addTo(map);else map.removeLayer(layer)}
+
+/* Optional OSM waterways: context only, not a hydrological model */
+$('showOsm').onchange=async e=>{
+ if(!e.target.checked){if(state.osmLayer)map.removeLayer(state.osmLayer);return}
+ if(state.osmLayer){state.osmLayer.addTo(map);return}
+ if(!state.eaLayer){e.target.checked=false;return alert('Load EA boundaries first.')}
+ const b=state.eaLayer.getBounds();
+ const bbox=`${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
+ const query=`[out:json][timeout:25];(way["waterway"~"river|stream|canal|drain"](${bbox}););out geom;`;
+ try{
+  $('mapStatus').textContent='Retrieving OSM waterway context...';
+  const response=await fetch('https://overpass-api.de/api/interpreter',{
+   method:'POST',body:query,headers:{'Content-Type':'text/plain'}
+  });
+  if(!response.ok)throw new Error('Overpass HTTP '+response.status);
+  const data=await response.json();
+  const features=data.elements.filter(x=>x.geometry&&x.geometry.length>1).map(x=>({
+   type:'Feature',properties:{name:x.tags?.name||'Unnamed waterway',type:x.tags?.waterway},
+   geometry:{type:'LineString',coordinates:x.geometry.map(p=>[p.lon,p.lat])}
+  }));
+  state.osmLayer=L.geoJSON({type:'FeatureCollection',features},{
+   style:{color:'#42a8ed',weight:2},
+   onEachFeature:(f,l)=>l.bindPopup('OSM waterway: '+escapeHTML(f.properties.name))
+  }).addTo(map);
+  $('mapStatus').textContent=`${features.length} mapped OSM waterways loaded.`;
+ }catch(err){
+  e.target.checked=false;alert('OSM waterway service unavailable: '+err.message);
+ }
+};
+
+/* CSV data merge */
+$('statsFile').onchange=async e=>{
+ const f=e.target.files[0];if(!f)return;
+ if(!state.all.length)return alert('Load EA polygons before importing statistics.');
+ try{mergeStats(parseCSV(await f.text()))}
+ catch(err){alert('CSV import failed: '+err.message)}
+};
+
+/* Climate forecast for selected EA centroid */
+$('fetchWeather').onclick=async()=>{
+ if(!state.selected)return alert('Select an EA first.');
+ const c=centre(state.selected);if(!c)return alert('Cannot calculate the selected EA centroid.');
+ const days=Number($('forecastDays').value);
+ const params=new URLSearchParams({
+  latitude:c.lat,longitude:c.lon,forecast_days:days,
+  daily:'precipitation_sum,temperature_2m_mean,temperature_2m_max,temperature_2m_min',
+  hourly:'relative_humidity_2m,soil_moisture_0_to_7cm,temperature_2m,precipitation',
+  timezone:'Africa/Banjul'
+ });
+ try{
+  setStatus('retrieving climate forecast');
+  const res=await fetch('https://api.open-meteo.com/v1/forecast?'+params.toString());
+  if(!res.ok)throw new Error('Forecast API HTTP '+res.status);
+  const data=await res.json();state.weather=data;
+  const daily=data.daily;
+  const rain=daily.precipitation_sum||[];
+  const temp=daily.temperature_2m_mean||[];
+  const humidity=data.hourly.relative_humidity_2m||[];
+  const soil=data.hourly.soil_moisture_0_to_7cm||[];
+  $('weatherTemp').textContent=num(temp.reduce((a,b)=>a+(b??0),0)/Math.max(1,temp.length),1)+' °C';
+  $('weatherRain').textContent=num(rain.reduce((a,b)=>a+(b??0),0),1)+' mm';
+  $('weatherHumidity').textContent=num(humidity.reduce((a,b)=>a+(b??0),0)/Math.max(1,humidity.length),1)+' %';
+  $('weatherSoil').textContent=soil.length?num(soil.reduce((a,b)=>a+(b??0),0)/soil.length,3)+' m³/m³':'—';
+  makeChart('rainChart','bar',daily.time,[{label:'Rainfall (mm)',data:rain,backgroundColor:'#399fce'}]);
+  makeChart('tempChart','line',daily.time,[{label:'Mean temperature (°C)',data:temp,
+   borderColor:'#f0a24b',backgroundColor:'#f0a24b',tension:.25}]);
+  $('weatherSource').textContent='Source: Open-Meteo forecast API. EA centroid location: '+c.lat.toFixed(5)+', '+c.lon.toFixed(5)+'. Forecast values, not observed station data.';
+  $('interpretation').textContent=`Forecast for ${featureName(state.selected)}: accumulated precipitation ${num(rain.reduce((a,b)=>a+(b||0),0),1)} mm over ${days} days; average daily temperature ${num(temp.reduce((a,b)=>a+(b||0),0)/Math.max(1,temp.length),1)} °C. These forecast values do not establish crop water stress, flood probability or crop yield.`;
+  setStatus('climate forecast loaded');
+ }catch(err){
+  setStatus('climate unavailable');
+  alert('Could not retrieve forecast: '+err.message);
+ }
+};
+
+/* CSV export */
+function download(name,content,type){
+ const blob=new Blob([content],{type});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+ a.download=name;a.click();URL.revokeObjectURL(a.href);
+}
+function csvEscape(v){
+ const s=String(v??'');return '"'+s.replace(/"/g,'""')+'"';
+}
+$('exportCSV').onclick=()=>{
+ if(!state.filtered.length)return alert('No EA data to export.');
+ const keys=['feacode','eaname','RCO','lganame','distname','wardname',
+  'sum_pop','sum_hhs','cropland_ha','cropland_pct','ndvi','evi','savi',
+  'rainfall_mm','soil_moisture','temperature','yield'];
+ const rows=[['ea_code','ea_name','region','lga','district','ward',
+  'population','households','cropland_ha','cropland_pct','ndvi','evi',
+  'savi','rainfall_mm','soil_moisture','temperature','yield','ea_area_km2']];
+ state.filtered.forEach(f=>{
+  const p=f.properties||{};
+  rows.push([
+   getEAcode(p),featureName(f),prop(p,['RCO','region']),
+   prop(p,['lganame','LGA','lga']),prop(p,['distname','district']),
+   prop(p,['wardname','ward']),prop(p,['sum_pop','POP','pop','population']),
+   prop(p,['sum_hhs','HH','hhs','households']),getMetric(f,'cropland_ha'),
+   getMetric(f,'cropland_pct'),getMetric(f,'ndvi'),getMetric(f,'evi'),
+   getMetric(f,'savi'),getMetric(f,'rainfall_mm'),getMetric(f,'soil_moisture'),
+   getMetric(f,'temperature'),getMetric(f,'yield'),f.__areaKm2
+  ]);
+ });
+ download('GBoS_Gambia_EA_Agricultural_Watershed_Indicators.csv',
+  rows.map(r=>r.map(csvEscape).join(',')).join('\n'),'text/csv');
+};
+$('exportGeo').onclick=()=>{
+ if(!state.filtered.length)return alert('No EA polygons to export.');
+ const out={type:'FeatureCollection',features:state.filtered.map(f=>{
+  const g=JSON.parse(JSON.stringify(f));delete g.__areaKm2;return g;
+ })};
+ download('Gambia_Filtered_EA_Agricultural_Watershed.geojson',JSON.stringify(out),
+  'application/geo+json');
+};
+$('exportJSON').onclick=()=>{
+ const out={
+  title:'GBoS GEOAI Gambia Watershed and Agricultural Intelligence',
+  generated:new Date().toISOString(),
+  number_of_loaded_EAs:state.all.length,
+  number_of_filtered_EAs:state.filtered.length,
+  selected_EA:state.selected?state.selected.properties:null,
+  selected_EA_forecast:state.weather,
+  note:'Forecast and uploaded indicators must be distinguished from measured observations.'
+ };
+ download('GBoS_GEOAI_Dashboard_Export.json',JSON.stringify(out,null,2),'application/json');
+};
+
+/* Reset */
+$('reset').onclick=()=>{
+ ['region','lga','district','ward','ea'].forEach(id=>$(id).value='');
+ $('mapMetric').value='ea_area';$('boundaryStyle').value='choropleth';
+ state.filtered=[...state.all];state.selected=null;state.weather=null;
+ refreshFilters();applyFilters();
+ $('selectedTitle').textContent='No EA selected';
+ $('selectedDetails').textContent='Select an EA polygon on the map.';
+ $('weatherTemp').textContent='—';$('weatherRain').textContent='—';
+ $('weatherHumidity').textContent='—';$('weatherSoil').textContent='—';
+ $('weatherSource').textContent='No climate forecast requested.';
+ $('interpretation').textContent='Select an EA to view its agricultural and climate profile.';
+ ['worldLayer','satelliteLayer','osmLayer'].forEach(k=>{
+  if(state[k])map.removeLayer(state[k]);
+ });
+ $('showWorldCover').checked=false;$('showSatellite').checked=false;$('showOsm').checked=false;
+ Object.values(state.charts).forEach(c=>c.destroy());state.charts={};
+ if(state.all.length)map.fitBounds(state.eaLayer.getBounds());
+};
+
+/* Clock and startup */
+function tick(){$('clock').textContent=new Date().toLocaleString('en-GB',{timeZone:'Africa/Banjul'})+' GMT'}
+tick();setInterval(tick,1000);
+makeChart('agChart','bar',[],[{label:'EA indicator',data:[]}]);
+makeChart('rainChart','bar',[],[{label:'Rainfall (mm)',data:[]}]);
+makeChart('tempChart','line',[],[{label:'Temperature (°C)',data:[]}]);
+setStatus('system ready');
+</script>
+</body>
+</html>
